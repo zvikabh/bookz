@@ -28,7 +28,6 @@ public class GoogleSheetsAccessor implements Serializable {
 	
 	public GoogleSheetsAccessor(String authToken) {
 		mInitStatus = InitStatus.UNINITIALIZED;
-		mInitNotifier = Integer.valueOf(0);  // dummy object (must be serializable).
 		mAuthToken = authToken;
 	}
 	
@@ -39,40 +38,51 @@ public class GoogleSheetsAccessor implements Serializable {
 		mSpreadsheetUrl = spreadsheetUrl;
 		synchronized (mInitStatus) {
 			mInitStatus = InitStatus.INITIALIZED;
-			synchronized(mInitNotifier) {
-				mInitNotifier.notifyAll();
-			}
+			mInitStatus.notifyAll();
 		}
 	}
 
 	/**
 	 * Choose a spreadsheet to read from and write to, based on its title.
 	 * The first matching spreadsheet will be used.
-	 * If no match is found, creates a new spreadsheet with the specified title.
 	 */
-	public void initFromSpreadsheetTitleOrCreate(String spreadsheetTitle) {
+	public void initFromSpreadsheetTitle(String spreadsheetTitle) {
 		Log.i("GoogleSheetsAccessor", "initFromSpreadsheetTitleOrCreate");
 		synchronized(mInitStatus) {
 			mInitStatus = InitStatus.INITIALIZING;
 		}
 		new SpreadsheetFinder().execute(spreadsheetTitle);
 		// When the spreadsheet is found or created, the async task will set 
-		// mInitStatus to INITIALIZED and then call mInitNotifier.notifyAll().
+		// mInitStatus to INITIALIZED and then call mInitStatus.notifyAll().
 	}
 
-	/**
+    public void updateAuthToken(String newAuthToken) {
+        mAuthToken = newAuthToken;
+    }
+    
+    /**
+     * Interface for receiving a notification when an async task has completed.
+     */
+    public interface CompletionListener {
+        /**
+         * Called on the caller thread when the async task has completed.
+         */
+        void done(boolean success);
+    }
+
+    /**
 	 * Starts an AsyncTask which reads all items in the Google Sheet
 	 * and saves them in the specified target map.
 	 */
-	public void asyncLoadDataInto(Map<String, Book> target) {
-		new DataGetter(new MapDataGetterTarget(target)).execute();
+	public void asyncLoadDataInto(Map<String, Book> target, CompletionListener completionListener) {
+		new DataGetter(new MapDataGetterTarget(target), completionListener).execute();
 	}
 	
 	/**
 	 * Starts an AsyncTask which updates the specified books within the Google Sheet.
 	 */
-	public void asyncUpdateBooks(Book... books) {
-		new DataSetter().execute(books);
+	public void asyncUpdateBooks(CompletionListener completionListener, Book... books) {
+		new DataSetter(completionListener).execute(books);
 	}
 	
 	private SpreadsheetService getSpreadsheetService() {
@@ -133,10 +143,13 @@ public class GoogleSheetsAccessor implements Serializable {
 	 * Loads all books from the Google Sheet.
 	 */
 	private class DataGetter extends AsyncTask<Void, Void, List<Book>> {
-		public DataGetter(DataGetterTarget target) {
+
+	    public DataGetter(DataGetterTarget target, CompletionListener completionListener) {
 			mTarget = target;
+			mCompletionListener = completionListener;
 		}
 		
+        private CompletionListener mCompletionListener;
 		private DataGetterTarget mTarget;
 		
 		@Override
@@ -164,23 +177,34 @@ public class GoogleSheetsAccessor implements Serializable {
 		protected void onPostExecute(List<Book> products) {
 			if (products == null) {
 				// TODO: Handle loading errors
+	            if (mCompletionListener != null) {
+	                mCompletionListener.done(false);
+	            }
 				return;
 			}
 			
 			for (Book book : products) {
 				mTarget.add(book);
 			}
+			
+			if (mCompletionListener != null) {
+			    mCompletionListener.done(true);
+			}
 		}
-		
+
 	}
 	
 	/**
 	 * Updates the given books in the Google Sheet.
 	 */
-	private class DataSetter extends AsyncTask<Book, Void, Void> {
+	private class DataSetter extends AsyncTask<Book, Void, Boolean> {
+	    
+        public DataSetter(CompletionListener completionListener) {
+	        mCompletionListener = completionListener;
+	    }
 
 		@Override
-		protected Void doInBackground(Book... books) {
+		protected Boolean doInBackground(Book... books) {
 			// Build a map from barcode to Book.
 			Map<String, Book> booksToUpdate = new HashMap<String, Book>();
 			for (Book book : books) {
@@ -200,6 +224,7 @@ public class GoogleSheetsAccessor implements Serializable {
 				}
 			} catch (Exception e) {
 				Log.e("GoogleSheetsAccessor", "Failed to update book spreadsheet");
+				return false;
 			}
 			
 			// Verify all books were saved.
@@ -210,11 +235,21 @@ public class GoogleSheetsAccessor implements Serializable {
 					sb.append(barcode + " ");
 				}
 				Log.e("GoogleSheetsAccessor", sb.toString());
+				return false;
 			}
 			
-			return null;
+			return true;
 		}
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            if (mCompletionListener != null) {
+                mCompletionListener.done(result);
+            }
+        }
 		
+        private CompletionListener mCompletionListener;
+
 	}
 	
 	private class SpreadsheetFinder extends AsyncTask<String, Void, Void> {
@@ -260,9 +295,7 @@ public class GoogleSheetsAccessor implements Serializable {
 			Log.i("SpreadsheetFinder", "Found spreadsheet: " + mSpreadsheetUrl);
 			synchronized (mInitStatus) {
 				mInitStatus = InitStatus.INITIALIZED;
-				synchronized(mInitNotifier) {
-					mInitNotifier.notifyAll();
-				}
+				mInitStatus.notifyAll();
 			}
 		}
 		
@@ -278,8 +311,7 @@ public class GoogleSheetsAccessor implements Serializable {
 	 * Indicates whether mSpreadsheetUrl points to a valid spreadsheet URL.
 	 * Finding the correct URL may take a long time, in which case it is performed on
 	 * a separate thread.
-	 * mInitNotifier.notifyAll() is called when the state is changed to INITIALIZED.
+	 * mInitStatus.notifyAll() is called when the state is changed to INITIALIZED.
 	 */
 	private InitStatus mInitStatus;
-	private final Integer mInitNotifier;
 }
