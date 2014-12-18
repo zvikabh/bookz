@@ -36,9 +36,9 @@ public class GoogleSheetsAccessor implements Serializable {
 	 */
 	public void initFromSpreadsheetUrl(String spreadsheetUrl) {
 		mSpreadsheetUrl = spreadsheetUrl;
-		synchronized (mInitStatus) {
+		synchronized (this) {
 			mInitStatus = InitStatus.INITIALIZED;
-			mInitStatus.notifyAll();
+			notifyAll();
 		}
 	}
 
@@ -48,12 +48,12 @@ public class GoogleSheetsAccessor implements Serializable {
 	 */
 	public void initFromSpreadsheetTitle(String spreadsheetTitle) {
 		Log.i("GoogleSheetsAccessor", "initFromSpreadsheetTitleOrCreate");
-		synchronized(mInitStatus) {
+		synchronized (this) {
 			mInitStatus = InitStatus.INITIALIZING;
 		}
 		new SpreadsheetFinder().execute(spreadsheetTitle);
 		// When the spreadsheet is found or created, the async task will set 
-		// mInitStatus to INITIALIZED and then call mInitStatus.notifyAll().
+		// mInitStatus to INITIALIZED and then call this.notifyAll().
 	}
 
     public void updateAuthToken(String newAuthToken) {
@@ -100,7 +100,7 @@ public class GoogleSheetsAccessor implements Serializable {
 			throw new IllegalArgumentException("Attempting to load an uninitialized spreadsheet.");
 		case INITIALIZING:
 			Log.w("GoogleSheetsAccessor", "Waiting for initialization to complete...");
-			mInitStatus.wait();
+			wait();
 			Log.w("GoogleSheetsAccessor", "Initialization is now complete!");
 			break;
 		case INITIALIZED:
@@ -111,6 +111,9 @@ public class GoogleSheetsAccessor implements Serializable {
 		ListFeed listFeed;
 		Log.i("GoogleSheetsAccessor", "mSpreadsheetUrl: [" + mSpreadsheetUrl + "]");
 		listFeed = service.getFeed(new URL(mSpreadsheetUrl), ListFeed.class);
+		
+		Log.i(TAG, "Got list feed");
+		
 		return listFeed;
 	}
 	
@@ -293,9 +296,9 @@ public class GoogleSheetsAccessor implements Serializable {
 		private void foundSpreadsheet(URL listFeedUrl) {
 			mSpreadsheetUrl = listFeedUrl.toString();
 			Log.i("SpreadsheetFinder", "Found spreadsheet: " + mSpreadsheetUrl);
-			synchronized (mInitStatus) {
+			synchronized (this) {
 				mInitStatus = InitStatus.INITIALIZED;
-				mInitStatus.notifyAll();
+				notifyAll();
 			}
 		}
 		
@@ -311,7 +314,9 @@ public class GoogleSheetsAccessor implements Serializable {
 	 * Indicates whether mSpreadsheetUrl points to a valid spreadsheet URL.
 	 * Finding the correct URL may take a long time, in which case it is performed on
 	 * a separate thread.
-	 * mInitStatus.notifyAll() is called when the state is changed to INITIALIZED.
+	 * this.notifyAll() is called when the state is changed to INITIALIZED.
 	 */
 	private InitStatus mInitStatus;
+	
+	private static final String TAG = "GoogleSheetsAccessor";
 }

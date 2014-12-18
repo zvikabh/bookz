@@ -12,6 +12,7 @@ import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Looper;
 import android.os.Parcelable;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -91,6 +92,7 @@ public class MainActivity extends ActionBarActivity {
         
         if (mSheetsAccessor == null) {
             mSheetsAccessor = new GoogleSheetsAccessor(mAuthToken);
+            mSheetsAccessor.initFromSpreadsheetTitle("Bookz Book List");
         } else {
             mSheetsAccessor.updateAuthToken(mAuthToken);
         }
@@ -99,7 +101,11 @@ public class MainActivity extends ActionBarActivity {
             
             @Override
             public void done(boolean success) {
-                mTextViewProgress.setText("Ready! Book list loaded.");
+                if (success) {
+                    mTextViewProgress.setText("Ready! " + mBookList.size() + " books loaded.");
+                } else {
+                    mTextViewProgress.setText("Error loading book list.");
+                }
             }
         });
     }
@@ -206,7 +212,13 @@ public class MainActivity extends ActionBarActivity {
                     } catch(UserRecoverableAuthException e) {
                         startActivityForResult(e.getIntent(), REQUEST_AUTHORIZATION);
                     } catch(Exception e) {
-                        Toast.makeText(MainActivity.this, "Error while getting auth token", Toast.LENGTH_SHORT).show();
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "Error while getting auth token", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                        
                         Log.e(TAG, "Error while getting auth token", e);
                         return FAILURE;
                     }
@@ -233,6 +245,7 @@ public class MainActivity extends ActionBarActivity {
                     }
                     
                     // New auth token received.
+                    Log.i(TAG, "New auth token received");
                     mAuthToken = authToken;
                     mIsAuthTokenRetrievalInProgress = false;
                     authTokenReceived();
