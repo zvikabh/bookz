@@ -17,12 +17,17 @@ import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.UserRecoverableAuthException;
 import com.google.android.gms.common.AccountPicker;
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -39,6 +44,14 @@ public class MainActivity extends ActionBarActivity {
         
         mTextViewProgress = (TextView) findViewById(R.id.textViewProgress);
         mTextViewProgress.setText("Authenticating...");
+        
+        Button buttonScan = (Button) findViewById(R.id.buttonScan);
+        buttonScan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new IntentIntegrator(MainActivity.this).initiateScan();
+            }
+        });
         
         getAuthToken();
     }
@@ -159,10 +172,42 @@ public class MainActivity extends ActionBarActivity {
             }
             break;
             
+        case IntentIntegrator.REQUEST_CODE:
+            IntentResult scanResult = IntentIntegrator.parseActivityResult(
+                    requestCode, resultCode, intent);
+            if (resultCode == RESULT_OK && scanResult != null) {
+                loadBookFromBarcode(scanResult.getContents());
+            } else {
+                Toast.makeText(this, "Scan failed.", Toast.LENGTH_SHORT).show();
+            }
+            break;
+            
         default:
             Log.e(TAG, "Unexpected activity request code: " + requestCode);
             break;
         }
+    }
+
+    private void loadBookFromBarcode(String barcode) {
+        if (!mBookList.containsKey(barcode)) {
+            Toast.makeText(this, "Barcode not found in database", Toast.LENGTH_LONG).show();
+            return;
+        }
+        
+        // Populate activity from loaded book.
+        Book book = mBookList.get(barcode);
+        populateField(R.id.editBookAuthor, book.getAuthor());
+        populateField(R.id.editBookTitle, book.getTitle());
+        populateField(R.id.editBookYear, book.getYear());
+        populateField(R.id.editBookISBN, book.getISBN());
+        populateField(R.id.editBookOldLocation, book.getLocation());
+        populateField(R.id.editBookOwner, book.getOwner());
+        populateField(R.id.editBookNotes, book.getNotes());
+    }
+
+    private void populateField(int editTextId, String newValue) {
+        EditText editText = (EditText) findViewById(editTextId);
+        editText.setText(newValue);
     }
 
     private void setUserEmail(String userEmail) {

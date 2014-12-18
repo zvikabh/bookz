@@ -82,6 +82,17 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="Old Location:" />
+
+    <EditText
+        android:id="@+id/editBookOldLocation"
+        android:layout_gravity="fill_horizontal"
+        android:inputType="text" >
+    </EditText>
+    
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:text="Owner:" />
 
     <EditText
