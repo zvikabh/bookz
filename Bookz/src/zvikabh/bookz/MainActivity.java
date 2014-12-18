@@ -12,7 +12,6 @@ import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Looper;
 import android.os.Parcelable;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -88,7 +87,7 @@ public class MainActivity extends ActionBarActivity {
     }
     
     private void authTokenReceived() {
-        mTextViewProgress.setText("Authenticated, loading book list...");
+        mTextViewProgress.setText("Authenticated!");
         
         if (mSheetsAccessor == null) {
             mSheetsAccessor = new GoogleSheetsAccessor(mAuthToken);
@@ -97,17 +96,19 @@ public class MainActivity extends ActionBarActivity {
             mSheetsAccessor.updateAuthToken(mAuthToken);
         }
         
-        mSheetsAccessor.asyncLoadDataInto(mBookList, new GoogleSheetsAccessor.CompletionListener() {
-            
-            @Override
-            public void done(boolean success) {
-                if (success) {
-                    mTextViewProgress.setText("Ready! " + mBookList.size() + " books loaded.");
-                } else {
-                    mTextViewProgress.setText("Error loading book list.");
+        if (mBookList.size() == 0) {
+            mTextViewProgress.setText("Authenticated, loading book list...");
+            mSheetsAccessor.asyncLoadDataInto(mBookList, new GoogleSheetsAccessor.CompletionListener() {
+                @Override
+                public void done(boolean success) {
+                    if (success) {
+                        mTextViewProgress.setText("Ready! " + mBookList.size() + " books loaded.");
+                    } else {
+                        mTextViewProgress.setText("Error loading book list.");
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
     @Override
