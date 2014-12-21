@@ -15,17 +15,6 @@
         android:text=""
         android:layout_columnSpan="2" />
     
-   	<TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Current Shelf: " />
-
-    <TextView
-        android:id="@+id/textViewCurrentShelf"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="" />
-    
     <Button
 		android:id="@+id/buttonScan"
 		android:layout_columnSpan="2"
@@ -60,6 +49,27 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="Old Location:" />
+
+    <TextView
+        android:id="@+id/textviewBookOldLocation"
+        android:layout_gravity="fill_horizontal"
+        android:text="" >
+    </TextView>
+    
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="New Location: " />
+
+    <EditText
+        android:id="@+id/editNewLocation"
+        android:layout_gravity="fill_horizontal"
+        android:inputType="text" />
+    
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:text="Year:" />
 
     <EditText
@@ -82,17 +92,6 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Old Location:" />
-
-    <EditText
-        android:id="@+id/editBookOldLocation"
-        android:layout_gravity="fill_horizontal"
-        android:inputType="text" >
-    </EditText>
-    
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
         android:text="Owner:" />
 
     <EditText
@@ -107,7 +106,7 @@
         android:text="Notes:" />
 
     <EditText
-        android:id="@+id/editBookNotes"
+        android:id="@+id/editBookNote"
         android:layout_gravity="fill_horizontal"
         android:inputType="text" >
     </EditText>
@@ -119,6 +118,6 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:textAppearance="?android:attr/textAppearanceSmall"
-		android:text="Update Book Location" />
+		android:text="Save Changes" />
 
 </GridLayout>

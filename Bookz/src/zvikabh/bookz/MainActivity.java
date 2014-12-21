@@ -42,6 +42,10 @@ public class MainActivity extends ActionBarActivity {
         Intent intent = getIntent();
         updateShelfFromIntent(intent);
         
+        if (mCurrentBook == null && savedInstanceState != null) {
+            mCurrentBook = (Book) savedInstanceState.getSerializable("mCurrentBook");
+        }
+        
         mTextViewProgress = (TextView) findViewById(R.id.textViewProgress);
         mTextViewProgress.setText("Authenticating...");
         
@@ -53,9 +57,24 @@ public class MainActivity extends ActionBarActivity {
             }
         });
         
+        Button buttonStore = (Button) findViewById(R.id.buttonStore);
+        buttonStore.setOnClickListener(new View.OnClickListener() {
+            
+            @Override
+            public void onClick(View view) {
+                storeChanges();
+            }
+        });
+        
         getAuthToken();
     }
 
+    @Override
+    protected void onSaveInstanceState (Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putSerializable("mCurrentBook", mCurrentBook);
+    }
+    
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -69,7 +88,7 @@ public class MainActivity extends ActionBarActivity {
             return;
         }
 
-        TextView textviewCurrentShelf = (TextView) findViewById(R.id.textViewCurrentShelf);
+        EditText edittextCurrentShelf = (EditText) findViewById(R.id.editNewLocation);
 
         Parcelable[] rawMsgs = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
         for (Parcelable rawMsg : rawMsgs) {
@@ -89,7 +108,7 @@ public class MainActivity extends ActionBarActivity {
 
                 if (decodedType.equals("text/bookz")) {
                     // Found our payload.
-                    textviewCurrentShelf.setText(decodedPayload);
+                    edittextCurrentShelf.setText(decodedPayload);
                     return;
                 }
             }
@@ -190,24 +209,41 @@ public class MainActivity extends ActionBarActivity {
 
     private void loadBookFromBarcode(String barcode) {
         if (!mBookList.containsKey(barcode)) {
+            Log.w(TAG, "Barcode not found: '" + barcode + "'");
             Toast.makeText(this, "Barcode not found in database", Toast.LENGTH_LONG).show();
+            mCurrentBook = null;
+            populateField(R.id.editBookAuthor, "");
+            populateField(R.id.editBookTitle, "");
+            populateField(R.id.editBookYear, "");
+            populateField(R.id.editBookISBN, "");
+            populateField(R.id.editBookOwner, "");
+            populateField(R.id.editBookNote, "");
+            populateField(R.id.textviewBookOldLocation, "");
             return;
         }
         
         // Populate activity from loaded book.
-        Book book = mBookList.get(barcode);
-        populateField(R.id.editBookAuthor, book.getAuthor());
-        populateField(R.id.editBookTitle, book.getTitle());
-        populateField(R.id.editBookYear, book.getYear());
-        populateField(R.id.editBookISBN, book.getISBN());
-        populateField(R.id.editBookOldLocation, book.getLocation());
-        populateField(R.id.editBookOwner, book.getOwner());
-        populateField(R.id.editBookNotes, book.getNotes());
+        mCurrentBook = mBookList.get(barcode);
+        populateField(R.id.editBookAuthor, mCurrentBook.getAuthor());
+        populateField(R.id.editBookTitle, mCurrentBook.getTitle());
+        populateField(R.id.editBookYear, mCurrentBook.getYear());
+        populateField(R.id.editBookISBN, mCurrentBook.getISBN());
+        populateField(R.id.editBookOwner, mCurrentBook.getOwner());
+        populateField(R.id.editBookNote, mCurrentBook.getNotes());
+        populateField(R.id.textviewBookOldLocation, mCurrentBook.getLocation());
     }
 
-    private void populateField(int editTextId, String newValue) {
-        EditText editText = (EditText) findViewById(editTextId);
-        editText.setText(newValue);
+    private void populateField(int id, String newValue) {
+        View view = findViewById(id);
+        if (view instanceof EditText) {
+            EditText editText = (EditText) view;
+            editText.setText(newValue);
+        } else if (view instanceof TextView) {
+            TextView textView = (TextView) view;
+            textView.setText(newValue);
+        } else {
+            throw new IllegalArgumentException("populateField received an invalid id");
+        }
     }
 
     private void setUserEmail(String userEmail) {
@@ -329,6 +365,50 @@ public class MainActivity extends ActionBarActivity {
         
         // Getting auth token will continue after the user chooses an account.
     }
+    
+    private void storeChanges() {
+        if (mSheetsAccessor == null) {
+            Toast.makeText(this, "Book list must be loaded in order to update it.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (mBookList == null) {
+            Toast.makeText(this, "Book list must be loaded in order to update it.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (mCurrentBook == null) {
+            Toast.makeText(this, "First scan a book in order to update it.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        mCurrentBook.setAuthor(getEditTextString(R.id.editBookAuthor));
+        mCurrentBook.setISBN(getEditTextString(R.id.editBookISBN));
+        mCurrentBook.setLocation(getEditTextString(R.id.editNewLocation));
+        mCurrentBook.setNotes(getEditTextString(R.id.editBookNote));
+        mCurrentBook.setOwner(getEditTextString(R.id.editBookOwner));
+        mCurrentBook.setTitle(getEditTextString(R.id.editBookTitle));
+        mCurrentBook.setYear(getEditTextString(R.id.editBookYear));
+        
+        mTextViewProgress.setText("Saving changes...");
+        
+        GoogleSheetsAccessor.CompletionListener completionListener = new GoogleSheetsAccessor.CompletionListener() {
+            @Override
+            public void done(boolean success) {
+                if (success) {
+                    Toast.makeText(MainActivity.this, "Database updated successfully", Toast.LENGTH_SHORT).show();
+                    mTextViewProgress.setText("Database updated successfully.");
+                } else {
+                    Toast.makeText(MainActivity.this, "Database failed to update, try again", Toast.LENGTH_LONG).show();
+                    mTextViewProgress.setText("Database update failed, please try again.");
+                }
+            }
+        };
+        mSheetsAccessor.asyncUpdateBooks(completionListener, mCurrentBook);
+    }
+
+    private String getEditTextString(int id) {
+        EditText edittext = (EditText) findViewById(id);
+        return edittext.getEditableText().toString();
+    }
 
     public final static int REQUEST_AUTHORIZATION = 998;
     public final static int REQUEST_PICK_ACCOUNT = 999;
@@ -340,6 +420,7 @@ public class MainActivity extends ActionBarActivity {
     private GoogleSheetsAccessor mSheetsAccessor = null;
     
     private Map<String, Book> mBookList = new HashMap<String, Book>();
+    private Book mCurrentBook;
     
     private TextView mTextViewProgress;
 

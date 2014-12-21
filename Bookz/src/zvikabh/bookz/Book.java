@@ -30,14 +30,18 @@ public class Book implements Serializable {
 	 * Stores the Book object to a spreadsheet row.
 	 */
 	public void toSpreadsheetRow(CustomElementCollection elements) {
-		elements.setValueLocal("author", mAuthor);
-		elements.setValueLocal("title", mTitle);
-		elements.setValueLocal("year", mYear);
-		elements.setValueLocal("isbn", mISBN);
-		elements.setValueLocal("barcode", mBarcode);
-		elements.setValueLocal("location", mLocation);
-		elements.setValueLocal("owner", mOwner);
-		elements.setValueLocal("notes", mNotes);
+		setValue(elements, "author", mAuthor);
+		setValue(elements, "title", mTitle);
+		setValue(elements, "year", mYear);
+		setValue(elements, "isbn", mISBN);
+		setValue(elements, "barcode", mBarcode);
+		setValue(elements, "location", mLocation);
+		setValue(elements, "owner", mOwner);
+		setValue(elements, "notes", mNotes);
+	}
+	
+	private static void setValue(CustomElementCollection elements, String key, String value) {
+	    elements.setValueLocal(key, value == null ? "" : value);
 	}
 
 	public Map<String, String> toKeyValueMap() {
@@ -84,8 +88,40 @@ public class Book implements Serializable {
 	public String getNotes() {
 		return mNotes;
 	}
+	
+    public void setAuthor(String author) {
+        this.mAuthor = author;
+    }
 
-	private String mAuthor;
+    public void setTitle(String title) {
+        this.mTitle = title;
+    }
+
+    public void setYear(String year) {
+        this.mYear = year;
+    }
+
+    public void setISBN(String isbn) {
+        this.mISBN = isbn;
+    }
+
+    public void setBarcode(String barcode) {
+        this.mBarcode = barcode;
+    }
+
+    public void setLocation(String location) {
+        this.mLocation = location;
+    }
+
+    public void setOwner(String owner) {
+        this.mOwner = owner;
+    }
+
+    public void setNotes(String notes) {
+        this.mNotes = notes;
+    }
+
+    private String mAuthor;
 	private String mTitle;
 	private String mYear;
 	private String mISBN;

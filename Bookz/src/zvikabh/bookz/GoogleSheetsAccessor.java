@@ -226,7 +226,7 @@ public class GoogleSheetsAccessor implements Serializable {
 					}
 				}
 			} catch (Exception e) {
-				Log.e("GoogleSheetsAccessor", "Failed to update book spreadsheet");
+				Log.e("GoogleSheetsAccessor", "Failed to update book spreadsheet", e);
 				return false;
 			}
 			
