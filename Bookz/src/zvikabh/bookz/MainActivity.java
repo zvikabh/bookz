@@ -1,8 +1,8 @@
 package zvikabh.bookz;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.Map;
 
 import android.accounts.AccountManager;
 import android.content.Intent;
@@ -26,6 +26,7 @@ import android.widget.Toast;
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.UserRecoverableAuthException;
 import com.google.android.gms.common.AccountPicker;
+import com.google.common.collect.ImmutableList;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
@@ -42,8 +43,14 @@ public class MainActivity extends ActionBarActivity {
         Intent intent = getIntent();
         updateShelfFromIntent(intent);
         
-        if (mCurrentBook == null && savedInstanceState != null) {
+        if (savedInstanceState != null) {
             mCurrentBook = (Book) savedInstanceState.getSerializable("mCurrentBook");
+            mAuthToken = savedInstanceState.getString("mAuthToken");
+            mUserEmail = savedInstanceState.getString("mUserEmail");
+            
+            @SuppressWarnings("unchecked")
+            HashMap<String, Book> bookList = (HashMap<String, Book>) savedInstanceState.getSerializable("mBookList");
+            mBookList = bookList;
         }
         
         mTextViewProgress = (TextView) findViewById(R.id.textViewProgress);
@@ -53,7 +60,7 @@ public class MainActivity extends ActionBarActivity {
         buttonScan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                new IntentIntegrator(MainActivity.this).initiateScan();
+                new IntentIntegrator(MainActivity.this).initiateScan(BARCODE_TYPES);
             }
         });
         
@@ -73,6 +80,9 @@ public class MainActivity extends ActionBarActivity {
     protected void onSaveInstanceState (Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putSerializable("mCurrentBook", mCurrentBook);
+        outState.putSerializable("mBookList", mBookList);
+        outState.putString("mAuthToken", mAuthToken);
+        outState.putString("mUserEmail", mUserEmail);
     }
     
     @Override
@@ -208,6 +218,9 @@ public class MainActivity extends ActionBarActivity {
     }
 
     private void loadBookFromBarcode(String barcode) {
+        // Remove checksum from barcode, as it is not listed in the spreadsheet.
+        barcode = barcode.substring(0, barcode.length() - 1);
+        
         if (!mBookList.containsKey(barcode)) {
             Log.w(TAG, "Barcode not found: '" + barcode + "'");
             Toast.makeText(this, "Barcode not found in database", Toast.LENGTH_LONG).show();
@@ -419,10 +432,12 @@ public class MainActivity extends ActionBarActivity {
     
     private GoogleSheetsAccessor mSheetsAccessor = null;
     
-    private Map<String, Book> mBookList = new HashMap<String, Book>();
+    private HashMap<String, Book> mBookList = new HashMap<String, Book>();
     private Book mCurrentBook;
     
     private TextView mTextViewProgress;
 
     private static final String TAG = "MainActivity";
+    private static final Collection<String> BARCODE_TYPES = 
+            new ImmutableList.Builder<String>().add("UPC_A").add("EAN_13").build();
 }
