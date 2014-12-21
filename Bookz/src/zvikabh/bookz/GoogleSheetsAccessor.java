@@ -221,8 +221,10 @@ public class GoogleSheetsAccessor implements Serializable {
 					CustomElementCollection elements = bookRow.getCustomElements();
 					String barcode = elements.getValue("barcode");
 					if (booksToUpdate.containsKey(barcode)) {
+					    Log.i(TAG, "Updating barcode " + barcode + "...");
 						booksToUpdate.remove(barcode).toSpreadsheetRow(elements);
 						bookRow.update();
+						Log.i(TAG, "... Barcode " + barcode + " updated.");
 					}
 				}
 			} catch (Exception e) {

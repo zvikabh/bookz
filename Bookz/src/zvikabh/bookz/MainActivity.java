@@ -38,23 +38,10 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Log.w(TAG, "onCreate");
-
         Intent intent = getIntent();
         updateShelfFromIntent(intent);
         
-        if (savedInstanceState != null) {
-            mCurrentBook = (Book) savedInstanceState.getSerializable("mCurrentBook");
-            mAuthToken = savedInstanceState.getString("mAuthToken");
-            mUserEmail = savedInstanceState.getString("mUserEmail");
-            
-            @SuppressWarnings("unchecked")
-            HashMap<String, Book> bookList = (HashMap<String, Book>) savedInstanceState.getSerializable("mBookList");
-            mBookList = bookList;
-        }
-        
         mTextViewProgress = (TextView) findViewById(R.id.textViewProgress);
-        mTextViewProgress.setText("Authenticating...");
         
         Button buttonScan = (Button) findViewById(R.id.buttonScan);
         buttonScan.setOnClickListener(new View.OnClickListener() {
@@ -72,8 +59,20 @@ public class MainActivity extends ActionBarActivity {
                 storeChanges();
             }
         });
-        
-        getAuthToken();
+
+        if (savedInstanceState == null) {
+            mTextViewProgress.setText("Authenticating...");
+            getAuthToken();
+        } else {
+            mCurrentBook = (Book) savedInstanceState.getSerializable("mCurrentBook");
+            mSheetsAccessor = (GoogleSheetsAccessor) savedInstanceState.getSerializable("mSheetsAccessor");
+            mAuthToken = savedInstanceState.getString("mAuthToken");
+            mUserEmail = savedInstanceState.getString("mUserEmail");
+            
+            @SuppressWarnings("unchecked")
+            HashMap<String, Book> bookList = (HashMap<String, Book>) savedInstanceState.getSerializable("mBookList");
+            mBookList = bookList;
+        }
     }
 
     @Override
@@ -81,6 +80,7 @@ public class MainActivity extends ActionBarActivity {
         super.onSaveInstanceState(outState);
         outState.putSerializable("mCurrentBook", mCurrentBook);
         outState.putSerializable("mBookList", mBookList);
+        outState.putSerializable("mSheetsAccessor", mSheetsAccessor);
         outState.putString("mAuthToken", mAuthToken);
         outState.putString("mUserEmail", mUserEmail);
     }
